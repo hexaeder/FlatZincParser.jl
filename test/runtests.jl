@@ -2,14 +2,14 @@ using FlatZinc
 using Test
 
 @testset "FlatZinc.jl" begin
-    @testest "inany" begin
+    @testset "inany" begin
         using FlatZinc: inany
         @test !inany('a', 'b':'d', 'A':'Z')
         @test inany('a', 'a':'d', 'A':'Z')
         @test inany('B', 'a':'d', 'A':'Z')
     end
 
-    @testest "read while" begin
+    @testset "read while" begin
         using FlatZinc: read_while
         iob = IOBuffer("123abc#12")
         @test read_while(iob, '1':'3', 'a':'z') == "123abc"
@@ -24,10 +24,11 @@ using Test
     end
 
     @testset "peek2" begin
+        using FlatZinc: peekn
         io = IOBuffer("12345")
         pos = position(io)
-        @test peek(1, io) == '1'
-        @test peek(2, io) == '2'
+        @test peekn(1, io) == '1'
+        @test peekn(2, io) == '2'
         @test position(io) == pos
     end
 
@@ -57,25 +58,20 @@ using Test
             end
             i, b, f = 0, 0, 0
             for t in tokens
-                if t.type == FlatZinc.INT_LITERAL
+                if t.type === :int_literal
                     parse(Int, t.lexme)
                     i += 1
                 end
-                if t.type == FlatZinc.BOOL_LITERAL
+                if t.type === :bool_literal
                     parse(Bool, t.lexme)
                     b += 1
                 end
-                if t.type == FlatZinc.FLOAT_LITERAL
+                if t.type === :float_literal
                     parse(Float64, t.lexme)
                     f += 1
                 end
             end
-            println("Parsed $i integers, $b bools and $f floats correctly")
+            println("Parsed $i integers, $b bools and $f floats")
         end
-
-        tokens = open(file) do io
-            tokenize(io)
-        end
-        idents = filter(t -> t.type == FlatZinc.IDENTIFIER, tokens)
     end
 end
