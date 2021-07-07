@@ -52,8 +52,9 @@ using Test
     @testset "tokenize files" begin
         small_file = joinpath(@__DIR__,"files", "queens3_4.fzn")
         big_file = joinpath(@__DIR__,"files", "2018_test-scheduling_t100m10r3-2.fzn")
-        for file in [small_file, big_file]
-            tokens = open(file) do io
+        huge_file = joinpath(@__DIR__,"files", "oocsp_racks_030_f7.fzn")
+        for file in [small_file, big_file, huge_file]
+            @time tokens = open(file) do io
                 tokenize(io)
             end
             i, b, f = 0, 0, 0
@@ -73,5 +74,41 @@ using Test
             end
             println("Parsed $i integers, $b bools and $f floats")
         end
+
+        #=
+        string = open(big_file) do io
+            read(io, String)
+        end;
+        @benchmark tokenize($string)
+
+
+        @benchmark begin
+            FlatZinc.read_while!(_target, io, '1':'9')
+        end setup = begin
+            _target = IOBuffer()
+            io = IOBuffer("123asdb")
+        end
+
+        @benchmark begin
+            FlatZinc.read_while!(_target, io, 'a':'z', '1':'9')
+        end setup = begin
+            _target = IOBuffer()
+            io = IOBuffer("123asdb")
+        end
+
+        @benchmark begin
+            FlatZinc.read_single!(_target, io, '1':'9')
+        end setup = begin
+            _target = IOBuffer()
+            io = IOBuffer("123asdb")
+        end
+
+        @benchmark begin
+            FlatZinc.read_single!(_target, io, '1':'9', 'a':'z')
+        end setup = begin
+            _target = IOBuffer()
+            io = IOBuffer("123asdb")
+        end
+        =#
     end
 end

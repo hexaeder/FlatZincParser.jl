@@ -34,100 +34,106 @@ tokenize(s) = collect(Lexer(s))
 
 function Base.iterate(l::Lexer)
     seekstart(l.io)
-    iterate(l, l.io)
+    _cache = IOBuffer(; sizehint=100)
+    iterate(l, (l.io, _cache))
 end
 
-function Base.iterate(l::Lexer, io)
+function Base.iterate(l::Lexer, state)
+    io, _cache = state
     if eof(io)
         return nothing
     end
 
     # skip whitespaces
     c = readchar(io)
-    while c ∈ [' ', '\t']
+    while c ∈ (' ', '\t')
         c = readchar(io)
     end
 
     # check for magic charactes
     if c == '('
-        return (Token(:parentheses_l), io)
+        return (Token(:parentheses_l), state)
     elseif c == ')'
-        return (Token(:parentheses_r), io)
+        return (Token(:parentheses_r), state)
     elseif c == '['
-        return (Token(:bracket_l), io)
+        return (Token(:bracket_l), state)
     elseif c == ']'
-        return (Token(:bracket_r), io)
+        return (Token(:bracket_r), state)
     elseif c == '{'
-        return (Token(:brace_l), io)
+        return (Token(:brace_l), state)
     elseif c == '}'
-        return (Token(:brace_r), io)
+        return (Token(:brace_r), state)
     elseif c == ';'
-        return (Token(:semicolon), io)
+        return (Token(:semicolon), state)
     elseif c == ':'
         if peek1(io) == ':'
             skip(io, 1)
-            return (Token(:doublecolon), io)
+            return (Token(:doublecolon), state)
         else
-            return (Token(:colon), io)
+            return (Token(:colon), state)
         end
     elseif c == ','
-        return (Token(:comma), io)
+        return (Token(:comma), state)
     elseif c == '='
-        return (Token(:equalsign), io)
+        return (Token(:equalsign), state)
     elseif c == '\n'
-        return (Token(:newline), io)
+        return (Token(:newline), state)
     elseif c == '.'
         read_single(io, '.'; needsmatch=true)
-        return (Token(:dotdot), io)
+        return (Token(:dotdot), state)
     end
 
     # check for word
     if inany(c, 'a':'z', 'A':'Z')
-        word = string(c)
-        word *= read_while(io, 'a':'z', 'A':'Z', '0':'9', '_')
-
+        write(_cache, c)
+        read_while!(_cache, io, 'a':'z', 'A':'Z', '0':'9', '_')
+        word = String(take!(_cache))
         if word ∈ KEYWORDS
-            return (Token(:keyword, word), io)
+            return (Token(:keyword, word), state)
         elseif word ∈ TYPES
-            return (Token(:basic_par_type, word), io)
+            return (Token(:basic_par_type, word), state)
         elseif word ∈ ["true", "false"]
-            return (Token(:bool_literal, word), io)
+            return (Token(:bool_literal, word), state)
         else
-            return (Token(:identifier, word), io)
+            return (Token(:identifier, word), state)
         end
     end
 
     # number literal
-    word = string(c)
+    write(_cache, c) # start cache with single char
     if c == '-'
         c = readchar(io)
         @assert c ∈ '0':'9' "Found minus without following number!"
-        word *= c
+        write(_cache, c)
     end
 
     if inany(c, '0':'9')
         if c=='0' && peek1(io) ∈ 'x' # hex literal
-            word *= readchar(io)
-            word *= read_while(io, '0':'9', 'a':'f', 'A':'F'; needsmatch=true)
-            return (Token(:int_literal, word), io)
+            write(_cache, readchar(io)) # write the peeked x
+            read_while!(_cache, io, '0':'9', 'a':'f', 'A':'F'; needsmatch=true)
+            word = String(take!(_cache))
+            return (Token(:int_literal, word), state)
         elseif c=='0' && peek1(io) ∈ 'o' #?? literal
-            word *= readchar(io)
-            word *= read_while(io, '0':'7'; needsmatch=true)
+            write(_cache, readchar(io)) # write the peeked o
+            read_while!(_cache, io, '0':'7'; needsmatch=true)
             peek1(io) ∉ '8':'9' || error("oh boy that doesnt fit the oct literal")
-            return (Token(:int_literal, word), io)
+            word = String(take!(_cache))
+            return (Token(:int_literal, word), state)
         else
-            word *= read_while(io, '0':'9') # read rest of number
+            read_while!(_cache, io, '0':'9') # read rest of number
             if peek1(io) ∈ ('.', 'e', 'E') && inany(peek2(io), '0':'9', '+', '-')# ouuhh it's a float
-                word *= read_single(io, '.')
-                word *= read_while(io, '0':'9')
-                word *= read_single(io, ('e','E'))
-                if word[end] ∈ ('e','E')
-                    word *= read_single(io, ('+','-'))
-                    word *= read_while(io, '0':'9')
+                read_single!(_cache, io, '.')
+                read_while!(_cache, io, '0':'9')
+                found_e = read_single!(_cache, io, ('e','E'))
+                if found_e
+                    read_single!(_cache, io, ('+','-'))
+                    read_while!(_cache, io, '0':'9')
                 end
-                return (Token(:float_literal, word), io)
+                word = String(take!(_cache))
+                return (Token(:float_literal, word), state)
             else # this is an iteger!
-                return (Token(:int_literal, word), io)
+                word = String(take!(_cache))
+                return (Token(:int_literal, word), state)
             end
         end #
     end
@@ -135,32 +141,43 @@ function Base.iterate(l::Lexer, io)
     error("No token found: ", context(io))
 end
 
-function read_while(io, collections...; needsmatch=false)
-    str = ""
-    try
-        c = read(io, Char)
-        while inany(c, collections...)
-            str *= c
-            c = read(io, Char)
-        end
-        skip(io, -1) # go one back
-    catch e
-        e isa EOFError || rethrow(e)
+function read_while!(_target, io, collections...; needsmatch=false)
+    i = 0
+    c = readchar(io)
+    # XXX: the sluped collections lead to allocations for more than one match
+    while inany(c, collections...)
+        write(_target, c)
+        i += 1
+        c = readchar(io)
     end
-    needsmatch && isempty(str) && error("Nothing matches $collections here: $(context(io))")
-    return str
+    c===nothing || skip(io, -1) # go one back unless eof was reached
+
+    needsmatch && i==0 && error("Nothing matches $collections here: $(context(io))")
+    return i
 end
 
-function read_single(io, collections...; needsmatch=false)
-    eof(io) && !needsmatch && return ""
-    c = read(io, Char)
+function read_while(args...; kwargs...)
+    _target = IOBuffer()
+    read_while!(_target, args...; kwargs...)
+    return String(take!(_target))
+end
+
+function read_single!(_target, io, collections...; needsmatch=false)
+    c = readchar(io)
     if inany(c, collections...)
-        return string(c)
+        write(_target, c)
+        return true
     else
-        skip(io, -1)
+        c===nothing || skip(io, -1) # go one back unless eof was reached
         needsmatch && error("Nothing matches $collections here: $(context(io))")
-        return ""
+        return false
     end
+end
+
+function read_single(args...; kwargs...)
+    _target = IOBuffer(sizehint=1)
+    read_while!(_target, args...; kwargs...)
+    return String(take!(_target))
 end
 
 function inany(e, collections...)
@@ -170,10 +187,10 @@ function inany(e, collections...)
     return false
 end
 
-function peekn(i::Int, io, T=Char)
+function peekn(i::Int, io)
     pos = position(io)
     skip(io, i-1)
-    r = read(io, T)
+    r = readchar(io)
     seek(io, pos)
     return r
 end
