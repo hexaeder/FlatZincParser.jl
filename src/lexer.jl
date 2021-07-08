@@ -84,7 +84,7 @@ function Base.iterate(l::Lexer, state)
     end
 
     # check for word
-    if inany(c, 'a':'z', 'A':'Z')
+    if inany(c, 'a':'z', 'A':'Z', '_') # XXX: i allow _ as begin for all identifiers
         write(_cache, c)
         read_while!(_cache, io, 'a':'z', 'A':'Z', '0':'9', '_')
         word = String(take!(_cache))

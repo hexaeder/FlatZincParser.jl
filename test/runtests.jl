@@ -111,4 +111,143 @@ using Test
         end
         =#
     end
+
+    string = """
+    var 1..4: X_INTRODUCED_0_;
+    var 1..4: X_INTRODUCED_1_;
+    var 1..4: X_INTRODUCED_2_;
+    var 1..4: X_INTRODUCED_3_;
+    array [1..4] of var int: queens:: output_array([1..4]) = [X_INTRODUCED_0_,X_INTRODUCED_1_,X_INTRODUCED_2_,X_INTRODUCED_3_];
+    constraint int_lin_ne(X_INTRODUCED_4_,[X_INTRODUCED_0_,X_INTRODUCED_1_],0);
+    constraint int_lin_ne(X_INTRODUCED_4_,[X_INTRODUCED_0_,X_INTRODUCED_2_],0);
+    constraint int_lin_ne(X_INTRODUCED_4_,[X_INTRODUCED_0_,X_INTRODUCED_3_],0);
+    constraint int_lin_ne(X_INTRODUCED_4_,[X_INTRODUCED_1_,X_INTRODUCED_2_],0);
+    constraint int_lin_ne(X_INTRODUCED_4_,[X_INTRODUCED_1_,X_INTRODUCED_3_],0);
+    constraint int_lin_ne(X_INTRODUCED_4_,[X_INTRODUCED_2_,X_INTRODUCED_3_],0);
+    constraint int_lin_ne(X_INTRODUCED_4_,[X_INTRODUCED_0_,X_INTRODUCED_1_],1);
+    constraint int_lin_ne(X_INTRODUCED_4_,[X_INTRODUCED_0_,X_INTRODUCED_1_],-1);
+    constraint int_lin_ne(X_INTRODUCED_4_,[X_INTRODUCED_0_,X_INTRODUCED_2_],2);
+    constraint int_lin_ne(X_INTRODUCED_4_,[X_INTRODUCED_0_,X_INTRODUCED_2_],-2);
+    constraint int_lin_ne(X_INTRODUCED_4_,[X_INTRODUCED_0_,X_INTRODUCED_3_],3);
+    constraint int_lin_ne(X_INTRODUCED_4_,[X_INTRODUCED_0_,X_INTRODUCED_3_],-3);
+    constraint int_lin_ne(X_INTRODUCED_4_,[X_INTRODUCED_1_,X_INTRODUCED_2_],1);
+    constraint int_lin_ne(X_INTRODUCED_4_,[X_INTRODUCED_1_,X_INTRODUCED_2_],-1);
+    constraint int_lin_ne(X_INTRODUCED_4_,[X_INTRODUCED_1_,X_INTRODUCED_3_],2);
+    constraint int_lin_ne(X_INTRODUCED_4_,[X_INTRODUCED_1_,X_INTRODUCED_3_],-2);
+    constraint int_lin_ne(X_INTRODUCED_4_,[X_INTRODUCED_2_,X_INTRODUCED_3_],1);
+    constraint int_lin_ne(X_INTRODUCED_4_,[X_INTRODUCED_2_,X_INTRODUCED_3_],-1);
+    solve :: int_search(queens,first_fail,indomain_min,complete) satisfy;
+    """
+
+    using FlatZinc
+    using FlatZinc: TokenStream, AbstractNode, DataNode, Node, next, reset
+    using FlatZinc: match!, match_many!, match_token, match_many
+    using AbstractTrees
+
+    @testset "match matchmany" begin
+        ts = TokenStream(tokenize("1.2 2.6 0.2 ;"))
+        childs = AbstractNode[]
+        match!(childs, ts, :float_literal)
+        match!(childs, ts, :float_literal)
+        match!(childs, ts, :float_literal)
+        @test_throws ParsingError match!(childs, ts, :float_literal)
+        peek(ts).type === :semicolon
+
+        ts = TokenStream(tokenize("1.2 2.6 0.2 ;"))
+        @test match_many!(childs, ts, :float_literal) == 3
+        peek(ts).type === :semicolon
+
+        ts = TokenStream(tokenize("1.2, 2.6, 0.2 ;"))
+        match_many(ts, :float_literal; delimiter=:comma)
+    end
+
+    @testest "matchtoken" begin
+        ts = TokenStream("predicate foo bar;")
+        match_token(ts, :keyword, "predicate")
+        match_token(ts, :identifier, "foo")
+        @test_throws ParsingError match_token(ts, :identifier, "foo")
+        match_token(ts, :identifier)
+        match_token(ts, :semicolon)
+    end
+
+    @testset "predicate_item" begin
+        ts = TokenStream("predicate cumulativeChoco (array [int] of var int: s, array [int] of var int: d,array [int] of var int: r,var int: b);")
+
+        print_tree(match(ts, :predicate_item))
+        TokenStream("var set of int{}")
+    end
+
+    @testset "range and set literal" begin
+        ts = TokenStream("1..2;")
+        print_tree(match(ts, :set_literal))
+        ts = TokenStream("1.2..2.5;")
+        print_tree(match(ts, :set_literal))
+        ts = TokenStream("{1.2,2.5,};")
+        print_tree(match(ts, :set_literal))
+        ts = TokenStream("{1,2,3,4,5,6,7};")
+        print_tree(match(ts, :set_literal))
+    end
+
+    @testset "par_decl_item" begin
+        streams = [
+            TokenStream("array [1..100] of int: duration = [88,740,752,503,536,537,300,668,332,693,30,249,673,391,51,386,328,313,103,190,741,800,425,552,749,31,632,690,530,706,131,377,505,656,654,720,757,90,331,450,103,276,571,782,568,772,106,198,183,800,705,140,107,542,597,97,580,59,325,336,76,482,776,428,237,433,701,220,478,102,32,617,454,360,541,107,609,730,107,274,589,305,249,96,365,651,163,202,560,571,104,740,720,437,230,157,145,318,531,481];"),
+            TokenStream("array [1..2] of int: X_INTRODUCED_1952_ = [1,-1];"),
+        ]
+
+        for (i, s) in enumerate(streams)
+            println(i)
+            match(reset(s), :par_decl_item)
+        end
+
+        print_tree(match(ts, :predicate_item))
+        TokenStream("var set of int{}")
+    end
+
+    @testset "var_decl_item" begin
+        streams = [
+            TokenStream("var 1..4: X_INTRODUCED_0_;"),
+            TokenStream("array [1..4] of var int: queens:: output_array([1..4]) = [X_INTRODUCED_0_,X_INTRODUCED_1_,X_INTRODUCED_2_,X_INTRODUCED_3_];"),
+        ]
+        match(reset(streams[1]), :var_decl_item)
+        print_tree(match(reset(streams[2]), :var_decl_item))
+
+        str = ":: output_array([1..4]) = [X_INTRODUCED_0_,X_INTRODUCED_1_,X_INTRODUCED_2_,X_INTRODUCED_3_];"
+        print_tree(match(TokenStream(str), :annotations), maxdepth=100)
+
+        match(TokenStream(str[3:end]), :annotation)
+
+        #=
+        expr
+          | basic_expr
+          |    | basic-literal-expr
+          |    |    | bool, int, float, set
+          |    | indentifer
+          | array_literal
+        =#
+
+        match(TokenStream("[1..4]"), :expr)
+        match(TokenStream("[1..4]"), :array_literal)
+        print_tree(match(TokenStream("1..4"), :basic_literal_expr))
+
+        match(TokenStream("[1..4]"), :basic_expr)
+
+        match(TokenStream("[1..4]"), :basic_expr)
+
+        match(TokenStream("[1..4]"), :expr)
+        match(TokenStream("[1..4]"), :array_literal)
+
+
+        for (i, s) in enumerate(streams)
+            println(i)
+        end
+
+        print_tree(match(ts, :predicate_item))
+        TokenStream("var set of int{} ::")
+    end
 end
+
+struct ParsingError2 <:Exception
+    msg::String
+    stream::TokenStream
+end
+throw(ParsingError2("bla", TokenStream("hallo 1 2 3")))
