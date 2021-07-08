@@ -123,10 +123,10 @@ function construct(n::Node{:identifier}, stream)
 end
 
 function construct(n::Node{:model}, stream)
-    match_many!(n.children, stream, :predicate_item)
-    match_many!(n.children, stream, :par_decl_item)
-    match_many!(n.children, stream, :var_decl_item)
-    match_many!(n.children, stream, :constraint_item)
+    match_many!(n.children, stream, :predicate_item, needsmatch=false)
+    match_many!(n.children, stream, :par_decl_item, needsmatch=false)
+    match_many!(n.children, stream, :var_decl_item, needsmatch=false)
+    match_many!(n.children, stream, :constraint_item, needsmatch=false)
     match!(n.children, stream, :solve_item)
 end
 

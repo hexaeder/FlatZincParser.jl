@@ -96,4 +96,16 @@ using FlatZinc: match!, match_many!, match_token, match_many
         match(reset(streams[2]), :solve_item)
         match(reset(streams[3]), :solve_item)
     end
+
+    @testset "parse files" begin
+        small_file = joinpath(@__DIR__,"files", "queens3_4.fzn")
+        big_file = joinpath(@__DIR__,"files", "2018_test-scheduling_t100m10r3-2.fzn")
+        # huge_file = joinpath(@__DIR__,"files", "oocsp_racks_030_f7.fzn")
+
+        @time tokens = open(tokenize, small_file);
+        @time match(TokenStream(tokens), :model);
+
+        @time tokens = open(tokenize, big_file);
+        @time match(TokenStream(tokens), :model);
+    end
 end
