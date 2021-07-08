@@ -63,7 +63,7 @@ using FlatZinc: match!, match_many!, match_token, match_many
         @test tok[2].lexme == "this is my string"
     end
 
-    @testest "eol parsing" begin
+    @testset "eol parsing" begin
         ts = tokenize("1.2 2.6 0.2 ;")
         @test length(ts) == 4
     end

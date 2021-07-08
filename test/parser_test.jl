@@ -92,28 +92,8 @@ using FlatZinc: match!, match_many!, match_token, match_many
                    TokenStream("solve :: int_search(queens,first_fail,indomain_min,complete) satisfy;"),
                    TokenStream("solve :: int_search(X_INTRODUCED_51094_,input_order,indomain_min,complete) satisfy;")]
 
-        # match(reset(streams[1]), :solve_item)
+        match(reset(streams[1]), :solve_item)
         match(reset(streams[2]), :solve_item)
         match(reset(streams[3]), :solve_item)
-
-        # try 1
-        # stream = reset(streams[1])
-        # match_token(stream, :keyword, "solve")
-        # match(stream, :annotations, needsmatch=true) #technically nm=true
-
-        # stream = TokenStream("[int_search(X_INTRODUCED_2947_,first_fail,indomain_min,complete),int_search(X_INTRODUCED_2946_,input_order,indomain_min,complete)]")
-        # match(reset(stream), :ann_expr)
-        # match(reset(stream), :annotation)
-
-        # match(reset(stream), :array_literal)
-
-        # try 2
-        # stream = reset(streams[2])
-        # match_token(stream, :keyword, "solve")
-        # match(stream, :annotations, needsmatch=true) #technically nm=true
-        # stream = TokenStream("int_search(X_INTRODUCED_2947_,first_fail,indomain_min,complete),int_search(X_INTRODUCED_2946_,input_order,indomain_min,complete)")
-        # match(reset(stream), :expr) |> print_tree
-        # match(reset(stream), :annotation) |> prent_tree
-
     end
 end

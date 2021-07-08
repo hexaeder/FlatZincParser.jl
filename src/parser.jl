@@ -110,6 +110,12 @@ function construct(n::Node{:float_literal}, stream)
     n.children = [d]
 end
 
+function construct(n::Node{:string_literal}, stream)
+    t = match_token(stream, :string_literal)
+    d = DataNode(t.lexme)
+    n.children = [d]
+end
+
 function construct(n::Node{:identifier}, stream)
     t = match_token(stream, :identifier)
     d = DataNode(t.lexme)
@@ -188,22 +194,17 @@ function construct(n::Node{:basic_pred_param_type}, stream)
         return
     end
 
-    # XXX: i don't get the meaning of this shortcut, is ist netccessary?
-    if match_token(stream, :keyword, "var", needsmatch=false) !== nothing
-        match_token(stream, :keyword, "set")
-        match_token(stream, :keyword, "of")
-        match_token(stream, :basic_par_type, "int")
-        push!(n.children, DataNode("var set of int"))
-    end
-
-    # XXX: interpretation: set of 1..2 means the same as 1..2 and with curly braces as well
-    # whever says set shoud also say of!
+    # jump over "set of" if given
     if match_token(stream, :keyword, "set", needsmatch=false) !== nothing
         match_token(stream, :keyword, "of")
     end
 
-    # last resort: set_literal
-    match!(n.children, stream, :set_literal)
+    if match!(n.children, stream, :set_literal, needsmatch=false) !== nothing
+        # XXX: this will also match {Float, FLoat} which is not in the grammar
+        return
+    end
+
+    throw(ParsingError("Could not construct :basic_pred_param_type", stream))
 end
 
 function construct(n::Node{:basic_par_type}, stream)
@@ -362,19 +363,32 @@ end
 function construct(n::Node{:annotation}, stream)
     # needs to start with identifier
     match!(n.children, stream, :identifier)
-    if match_token(stream, :parentheses_l) !== nothing
+    if match_token(stream, :parentheses_l, needsmatch=false) !== nothing
         match_many!(n.children, stream, :ann_expr, delimiter=:comma)
         match_token(stream, :parentheses_r)
     end
 end
 
 function construct(n::Node{:ann_expr}, stream)
-    if match!(n.children, stream, :expr, needsmatch=false) !== nothing
+    if match!(n.children, stream, :basic_ann_expr, needsmatch=false) !== nothing
         return
-    elseif match!(n.children, stream, :annotation, needsmatch=false) !== nothing
+    elseif match_token(stream, :bracket_l, needsmatch=false) !== nothing
+        match_many!(n.children, stream, :basic_ann_expr, delimiter=:comma)
+        match_token(stream, :bracket_r)
         return
     end
     throw(ParsingError("Could not construct :ann_expr", stream))
+end
+
+function construct(n::Node{:basic_ann_expr}, stream)
+    if match!(n.children, stream, :annotation, needsmatch=false) !== nothing
+        return
+    elseif match!(n.children, stream, :basic_literal_expr, needsmatch=false) !== nothing
+        return
+    elseif match!(n.children, stream, :string_literal, needsmatch=false) !== nothing
+        return
+    end
+    throw(ParsingError("Could not construct :basic_ann_expr", stream))
 end
 
 function construct(n::Node{:expr}, stream)
