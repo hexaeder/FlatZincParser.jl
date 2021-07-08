@@ -83,6 +83,23 @@ function Base.iterate(l::Lexer, state)
         return (Token(:dotdot), state)
     end
 
+    # string literal
+    if c == '\"'
+        if peek2(io) == peek3(io) == '\"'
+            readchar(io); readchar(io);
+            read_while!(_cache, io, '\"'; condition=innone)
+            if peek1(io) == peek2(io) == peek3(io) == '\"'
+                readchar(io); readchar(io); readchar(io);
+                word = String(take!(_cache))
+                return (Token(:string_literal, word), state)
+            else
+                error("string musst end with 3 \"")
+            end
+        else
+            error("there is a \" but not 3 of them (╯°□°）╯︵ ┻━┻")
+        end
+    end
+
     # check for word
     if inany(c, 'a':'z', 'A':'Z', '_') # XXX: i allow _ as begin for all identifiers
         write(_cache, c)
@@ -141,11 +158,11 @@ function Base.iterate(l::Lexer, state)
     error("No token found: ", context(io))
 end
 
-function read_while!(_target, io, collections...; needsmatch=false)
+function read_while!(_target, io, collections...; needsmatch=false, condition=inany)
     i = 0
     c = readchar(io)
     # XXX: the sluped collections lead to allocations for more than one match
-    while inany(c, collections...)
+    while condition(c, collections...)
         write(_target, c)
         i += 1
         c = readchar(io)
@@ -187,6 +204,13 @@ function inany(e, collections...)
     return false
 end
 
+function innone(e, collections...)
+    for c in collections
+        e ∉ c && return true
+    end
+    return false
+end
+
 function peekn(i::Int, io)
     pos = position(io)
     skip(io, i-1)
@@ -196,6 +220,7 @@ function peekn(i::Int, io)
 end
 peek1(io) = peekn(1, io)
 peek2(io) = peekn(2, io)
+peek3(io) = peekn(3, io)
 
 function readchar(io, ifeof=nothing)
     eof(io) && return ifeof
