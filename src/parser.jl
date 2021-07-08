@@ -215,23 +215,21 @@ end
 function construct(n::Node{:basic_var_type}, stream)
     match_token(stream, :keyword, "var")
 
-    # XXX: this bit is weird, why no var <basic-par-type> ?
-    t = match_token(stream, :basic_par_type, needsmatch=false)
-    if t !== nothing
-        if t.lexme ∈ ["bool", "int", "float"]
-            d = DataNode(t.lexme)
-            n.children = [d]
-        else
-            throw(ParsingError("Wrong content auf basic_par_type token $(t.lexme)", stream))
-        end
+    if match!(n.children, stream, :basic_par_type, needsmatch=false) !== nothing
         return
     end
 
+    # jump over "set of" if given
     if match_token(stream, :keyword, "set", needsmatch=false) !== nothing
         match_token(stream, :keyword, "of")
     end
-    # XXX: this will also match {FLoat, FLoat} which is not in the grammar
-    match!(n.children, stream, :set_literal)
+
+    if match!(n.children, stream, :set_literal, needsmatch=false) !== nothing
+        # XXX: this will also match {Float, FLoat} which is not in the grammar
+        return
+    end
+
+    throw(ParsingError("Could not construct :basic_par_type", stream))
 end
 
 function construct(n::Node{:set_literal}, stream)

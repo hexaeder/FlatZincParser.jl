@@ -23,7 +23,7 @@ using FlatZinc: match!, match_many!, match_token, match_many
         match_many(ts, :float_literal; delimiter=:comma)
     end
 
-    @testest "matchtoken" begin
+    @testset "matchtoken" begin
         ts = TokenStream("predicate foo bar;")
         match_token(ts, :keyword, "predicate")
         match_token(ts, :identifier, "foo")
@@ -80,7 +80,7 @@ using FlatZinc: match!, match_many!, match_token, match_many
 
         str = "X_INTRODUCED_4_,[X_INTRODUCED_0_,X_INTRODUCED_1_],-1"
         stream = TokenStream(str)
-        match(stream, :expr) |> print_tree
+        match(stream, :expr)
         match_token(stream, :comma)
         match(stream, :expr) |> print_tree
         match_token(stream, :comma)
@@ -89,33 +89,31 @@ using FlatZinc: match!, match_many!, match_token, match_many
 
     @testset "solver_item" begin
         streams = [TokenStream("solve :: seq_search([int_search(X_INTRODUCED_2947_,first_fail,indomain_min,complete),int_search(X_INTRODUCED_2946_,input_order,indomain_min,complete)]) minimize objective;"),
-                   TokenStream("solve :: seq_search(int_search(X_INTRODUCED_2947_,first_fail,indomain_min,complete),int_search(X_INTRODUCED_2946_,input_order,indomain_min,complete)) minimize objective;"),
                    TokenStream("solve :: int_search(queens,first_fail,indomain_min,complete) satisfy;"),
                    TokenStream("solve :: int_search(X_INTRODUCED_51094_,input_order,indomain_min,complete) satisfy;")]
 
-        match(reset(streams[1]), :solve_item)
+        # match(reset(streams[1]), :solve_item)
         match(reset(streams[2]), :solve_item)
         match(reset(streams[3]), :solve_item)
-        match(reset(streams[4]), :solve_item)
 
         # try 1
-        stream = reset(streams[1])
-        match_token(stream, :keyword, "solve")
-        match(stream, :annotations, needsmatch=true) #technically nm=true
+        # stream = reset(streams[1])
+        # match_token(stream, :keyword, "solve")
+        # match(stream, :annotations, needsmatch=true) #technically nm=true
 
-        stream = TokenStream("[int_search(X_INTRODUCED_2947_,first_fail,indomain_min,complete),int_search(X_INTRODUCED_2946_,input_order,indomain_min,complete)]")
-        match(reset(stream), :ann_expr)
-        match(reset(stream), :annotation)
+        # stream = TokenStream("[int_search(X_INTRODUCED_2947_,first_fail,indomain_min,complete),int_search(X_INTRODUCED_2946_,input_order,indomain_min,complete)]")
+        # match(reset(stream), :ann_expr)
+        # match(reset(stream), :annotation)
 
-        match(reset(stream), :array_literal)
+        # match(reset(stream), :array_literal)
 
         # try 2
-        stream = reset(streams[2])
-        match_token(stream, :keyword, "solve")
-        match(stream, :annotations, needsmatch=true) #technically nm=true
-        stream = TokenStream("int_search(X_INTRODUCED_2947_,first_fail,indomain_min,complete),int_search(X_INTRODUCED_2946_,input_order,indomain_min,complete)")
-        match(reset(stream), :expr) |> print_tree
-        match(reset(stream), :annotation) |> prent_tree
+        # stream = reset(streams[2])
+        # match_token(stream, :keyword, "solve")
+        # match(stream, :annotations, needsmatch=true) #technically nm=true
+        # stream = TokenStream("int_search(X_INTRODUCED_2947_,first_fail,indomain_min,complete),int_search(X_INTRODUCED_2946_,input_order,indomain_min,complete)")
+        # match(reset(stream), :expr) |> print_tree
+        # match(reset(stream), :annotation) |> prent_tree
 
     end
 end

@@ -53,10 +53,9 @@ function Base.iterate(l::Lexer, state)
     while c == '\n'
         ln = ln + 1
         state = (io, _cache, ln) # update in satte
+        eof(io) && return nothing
         c = readchar(io)
     end
-
-    eof(io) && return nothing
 
     # check for magic charactes
     if c == '('
