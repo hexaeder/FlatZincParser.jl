@@ -55,11 +55,17 @@ function reset(tc::TokenStream)
     return tc
 end
 
-function context(ts::TokenStream; before=2, after=5)
+"""
+    context(ts::TokenStream; before=2, after=5)
+
+Strigify the current state of a TokenStream. Mainly
+for debuggin and errors.
+"""
+function context(ts::TokenStream; before=2, after=5, pos=ts.idx)
     str = ""
-    for i in (ts.idx-before):(ts.idx+after)
+    for i in (pos-before):(pos+after)
         t = ts[i]
-        if i == ts.idx
+        if i == pos
             str *= " 🔥"
         end
         if t !== nothing
@@ -78,8 +84,14 @@ end
 struct ParsingError <: Exception
     msg::String
     stream::TokenStream
+    streampos::Int
 end
 
+ParsingError(msg::String, stream::TokenStream) = ParsingError(msg, stream, stream.idx)
+
 function Base.show(io::IO, err::ParsingError)
-    print(io, "ParsingError: ", err.msg, " around\n", context(err.stream))
+    print(io, "ParsingError: ", err.msg)
+    t = err.stream[err.streampos]
+    t===nothing || print(io, " around line #", t.line)
+    print(io, "\n", context(err.stream, pos=err.streampos))
 end

@@ -35,7 +35,7 @@ tokenize(s) = collect(Lexer(s))
 function Base.iterate(l::Lexer)
     seekstart(l.io)
     _cache = IOBuffer(; sizehint=100)
-    iterate(l, (l.io, _cache, 0))
+    iterate(l, (l.io, _cache, 1))
 end
 
 function Base.iterate(l::Lexer, state)

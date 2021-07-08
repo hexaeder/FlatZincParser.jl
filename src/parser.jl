@@ -86,7 +86,7 @@ function match_token(stream::TokenStream, type::Symbol, lexme=nothing; needsmatc
         return next(stream)
     else
         if needsmatch
-            throw(ParsingError("Wrong token! got '$t' but requested '$(Token(type, lexme))'", stream))
+            throw(ParsingError("Wrong token! got '$t' but requested '$(Token(type, lexme))'", stream, stream.idx+1))
         end
         return nothing
     end
