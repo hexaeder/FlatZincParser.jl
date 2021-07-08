@@ -1,6 +1,6 @@
 module FlatZinc
 
-include("token.jl")
+include("utils.jl")
 include("lexer.jl")
 include("parser.jl")
 

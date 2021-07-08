@@ -1,54 +1,15 @@
 using AbstractTrees
 
-export ParsingError
 
-mutable struct TokenStream
-    token::Vector{Token}
-    idx::Int
-    TokenStream(token::Vector{Token}) = new(token, 0)
-    TokenStream(io) = new(tokenize(io), 0)
-end
-
-function Base.getindex(tc::TokenStream, i)
-    if checkbounds(Bool, tc.token, i)
-        return tc.token[i]
-    else
-        return nothing
-    end
-end
-
-function next(tc::TokenStream)
-    tc.idx += 1
-    tc[tc.idx]
-end
-
-Base.peek(tc::TokenStream) = tc[tc.idx + 1]
-
-function reset(tc::TokenStream)
-    tc.idx = 0
-    return tc
-end
-
-function context(ts::TokenStream; before=2, after=5)
-    str = ""
-    for i in (ts.idx-before):(ts.idx+after)
-        t = ts[i]
-        if i == ts.idx
-            str *= " 🔥"
-        end
-        if t !== nothing
-            str *= " "*string(t.type)
-            if !isempty(t.lexme)
-                str *= "("*t.lexme*")"
-            end
-        end
-    end
-    return str
-end
-
+"Supertype for all nodes"
 abstract type AbstractNode end
 
 
+"""
+    DataNode{D} <: AbstractNode
+
+Holds literal data of type D
+"""
 struct DataNode{D} <: AbstractNode
     data::D
 end
@@ -56,6 +17,12 @@ end
 AbstractTrees.printnode(io::IO, node::DataNode) = print(io, node.data)
 
 
+"""
+    Node{T} <: Abstract Node
+
+Holds children as vector. Type parameter `T` is a
+symbol to represent the node type.
+"""
 mutable struct Node{T} <: AbstractNode
     children::Vector{AbstractNode}
     Node(type) = new{type}(AbstractNode[])
@@ -64,17 +31,7 @@ end
 type(::Node{T}) where {T} = T
 
 AbstractTrees.children(node::Node) = node.children
-
 AbstractTrees.printnode(io::IO, node::Node) = print(io, type(node))
-
-struct ParsingError <: Exception
-    msg::String
-    stream::TokenStream
-end
-function Base.show(io::IO, err::ParsingError)
-    print(io, "ParsingError: ", err.msg, " around\n", context(err.stream))
-end
-
 
 function Base.match(stream::TokenStream, type::Symbol;  kwargs...)
     children = AbstractNode[]
@@ -164,6 +121,7 @@ function construct(n::Node{:model}, stream)
     match_many!(n.children, stream, :par_decl_item)
     match_many!(n.children, stream, :var_decl_item)
     match_many!(n.children, stream, :constraint_item)
+    match!(n.children, stream, :solve_item)
 end
 
 function construct(n::Node{:predicate_item}, stream)
@@ -446,5 +404,20 @@ function construct(n::Node{:constraint_item}, stream)
     match_many!(n.children, stream, :expr, delimiter=:comma)
     match_token(stream, :parentheses_r)
     match!(n.children, stream, :annotations, needsmatch=false) #technically nm=true
+    match_token(stream, :semicolon)
+end
+
+function construct(n::Node{:solve_item}, stream)
+    match_token(stream, :keyword, "solve")
+    match!(n.children, stream, :annotations, needsmatch=false) #technically nm=true
+    if match_token(stream, :keyword, "satisfy", needsmatch=false) !== nothing
+        # nothing else to match
+    elseif match_token(stream, :keyword, "minimize", needsmatch=false) !== nothing
+        match!(n.children, stream, :basic_expr)
+    elseif match_token(stream, :keyword, "maximize", needsmatch=false) !== nothing
+        match!(n.children, stream, :basic_expr)
+    else
+        throw(ParsingError("Could not construct :solve_item", stream))
+    end
     match_token(stream, :semicolon)
 end

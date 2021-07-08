@@ -35,14 +35,13 @@ tokenize(s) = collect(Lexer(s))
 function Base.iterate(l::Lexer)
     seekstart(l.io)
     _cache = IOBuffer(; sizehint=100)
-    iterate(l, (l.io, _cache))
+    iterate(l, (l.io, _cache, 0))
 end
 
 function Base.iterate(l::Lexer, state)
-    io, _cache = state
-    if eof(io)
-        return nothing
-    end
+    (io, _cache, ln) = state
+
+    eof(io) && return nothing
 
     # skip whitespaces
     c = readchar(io)
@@ -50,37 +49,44 @@ function Base.iterate(l::Lexer, state)
         c = readchar(io)
     end
 
+    # check for newline
+    while c == '\n'
+        ln = ln + 1
+        state = (io, _cache, ln) # update in satte
+        c = readchar(io)
+    end
+
+    eof(io) && return nothing
+
     # check for magic charactes
     if c == '('
-        return (Token(:parentheses_l), state)
+        return (Token(:parentheses_l, ln), state)
     elseif c == ')'
-        return (Token(:parentheses_r), state)
+        return (Token(:parentheses_r, ln), state)
     elseif c == '['
-        return (Token(:bracket_l), state)
+        return (Token(:bracket_l, ln), state)
     elseif c == ']'
-        return (Token(:bracket_r), state)
+        return (Token(:bracket_r, ln), state)
     elseif c == '{'
-        return (Token(:brace_l), state)
+        return (Token(:brace_l, ln), state)
     elseif c == '}'
-        return (Token(:brace_r), state)
+        return (Token(:brace_r, ln), state)
     elseif c == ';'
-        return (Token(:semicolon), state)
+        return (Token(:semicolon, ln), state)
     elseif c == ':'
         if peek1(io) == ':'
             skip(io, 1)
-            return (Token(:doublecolon), state)
+            return (Token(:doublecolon, ln), state)
         else
-            return (Token(:colon), state)
+            return (Token(:colon, ln), state)
         end
     elseif c == ','
-        return (Token(:comma), state)
+        return (Token(:comma, ln), state)
     elseif c == '='
-        return (Token(:equalsign), state)
-    elseif c == '\n'
-        return (Token(:newline), state)
+        return (Token(:equalsign, ln), state)
     elseif c == '.'
         read_single(io, '.'; needsmatch=true)
-        return (Token(:dotdot), state)
+        return (Token(:dotdot, ln), state)
     end
 
     # string literal
@@ -91,7 +97,7 @@ function Base.iterate(l::Lexer, state)
             if peek1(io) == peek2(io) == peek3(io) == '\"'
                 readchar(io); readchar(io); readchar(io);
                 word = String(take!(_cache))
-                return (Token(:string_literal, word), state)
+                return (Token(:string_literal, word, ln), state)
             else
                 error("string musst end with 3 \"")
             end
@@ -106,13 +112,13 @@ function Base.iterate(l::Lexer, state)
         read_while!(_cache, io, 'a':'z', 'A':'Z', '0':'9', '_')
         word = String(take!(_cache))
         if word ∈ KEYWORDS
-            return (Token(:keyword, word), state)
+            return (Token(:keyword, word, ln), state)
         elseif word ∈ TYPES
-            return (Token(:basic_par_type, word), state)
+            return (Token(:basic_par_type, word, ln), state)
         elseif word ∈ ["true", "false"]
-            return (Token(:bool_literal, word), state)
+            return (Token(:bool_literal, word, ln), state)
         else
-            return (Token(:identifier, word), state)
+            return (Token(:identifier, word, ln), state)
         end
     end
 
@@ -129,13 +135,13 @@ function Base.iterate(l::Lexer, state)
             write(_cache, readchar(io)) # write the peeked x
             read_while!(_cache, io, '0':'9', 'a':'f', 'A':'F'; needsmatch=true)
             word = String(take!(_cache))
-            return (Token(:int_literal, word), state)
+            return (Token(:int_literal, word, ln), state)
         elseif c=='0' && peek1(io) ∈ 'o' #?? literal
             write(_cache, readchar(io)) # write the peeked o
             read_while!(_cache, io, '0':'7'; needsmatch=true)
             peek1(io) ∉ '8':'9' || error("oh boy that doesnt fit the oct literal")
             word = String(take!(_cache))
-            return (Token(:int_literal, word), state)
+            return (Token(:int_literal, word, ln), state)
         else
             read_while!(_cache, io, '0':'9') # read rest of number
             if peek1(io) ∈ ('.', 'e', 'E') && inany(peek2(io), '0':'9', '+', '-')# ouuhh it's a float
@@ -147,10 +153,10 @@ function Base.iterate(l::Lexer, state)
                     read_while!(_cache, io, '0':'9')
                 end
                 word = String(take!(_cache))
-                return (Token(:float_literal, word), state)
+                return (Token(:float_literal, word, ln), state)
             else # this is an iteger!
                 word = String(take!(_cache))
-                return (Token(:int_literal, word), state)
+                return (Token(:int_literal, word, ln), state)
             end
         end #
     end
