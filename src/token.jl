@@ -6,6 +6,7 @@ struct Token
 end
 
 Token(s::Symbol) = Token(s, "")
+Token(s::Symbol, ::Nothing) = Token(s, "")
 
 function Base.show(io::IO, t::Token)
     print(io, t.type)

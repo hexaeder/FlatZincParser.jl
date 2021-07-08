@@ -1,5 +1,8 @@
 using FlatZinc
 using Test
+using FlatZinc: TokenStream, AbstractNode, DataNode, Node, next, reset, context
+using FlatZinc: match!, match_many!, match_token, match_many
+using AbstractTrees
 
 @testset "FlatZinc.jl" begin
     @testset "inany" begin
@@ -139,10 +142,6 @@ using Test
     solve :: int_search(queens,first_fail,indomain_min,complete) satisfy;
     """
 
-    using FlatZinc
-    using FlatZinc: TokenStream, AbstractNode, DataNode, Node, next, reset
-    using FlatZinc: match!, match_many!, match_token, match_many
-    using AbstractTrees
 
     @testset "match matchmany" begin
         ts = TokenStream(tokenize("1.2 2.6 0.2 ;"))
@@ -172,9 +171,7 @@ using Test
 
     @testset "predicate_item" begin
         ts = TokenStream("predicate cumulativeChoco (array [int] of var int: s, array [int] of var int: d,array [int] of var int: r,var int: b);")
-
-        print_tree(match(ts, :predicate_item))
-        TokenStream("var set of int{}")
+        match(ts, :predicate_item)
     end
 
     @testset "range and set literal" begin
@@ -193,14 +190,16 @@ using Test
             TokenStream("array [1..100] of int: duration = [88,740,752,503,536,537,300,668,332,693,30,249,673,391,51,386,328,313,103,190,741,800,425,552,749,31,632,690,530,706,131,377,505,656,654,720,757,90,331,450,103,276,571,782,568,772,106,198,183,800,705,140,107,542,597,97,580,59,325,336,76,482,776,428,237,433,701,220,478,102,32,617,454,360,541,107,609,730,107,274,589,305,249,96,365,651,163,202,560,571,104,740,720,437,230,157,145,318,531,481];"),
             TokenStream("array [1..2] of int: X_INTRODUCED_1952_ = [1,-1];"),
         ]
+        match(reset(streams[1]), :par_decl_item)
+        match(reset(streams[2]), :par_decl_item)
+    end
 
-        for (i, s) in enumerate(streams)
-            println(i)
-            match(reset(s), :par_decl_item)
-        end
-
-        print_tree(match(ts, :predicate_item))
-        TokenStream("var set of int{}")
+    @testset "array literal" begin
+        str = "[X_INTRODUCED_0_,X_INTRODUCED_1_,X_INTRODUCED_2_,X_INTRODUCED_3_]"
+        match(TokenStream(str), :array_literal)
+        match(TokenStream("[1..4]"), :expr)
+        match(TokenStream("[1..4]"), :array_literal)
+        match(TokenStream("1..4"), :basic_literal_expr)
     end
 
     @testset "var_decl_item" begin
@@ -209,45 +208,19 @@ using Test
             TokenStream("array [1..4] of var int: queens:: output_array([1..4]) = [X_INTRODUCED_0_,X_INTRODUCED_1_,X_INTRODUCED_2_,X_INTRODUCED_3_];"),
         ]
         match(reset(streams[1]), :var_decl_item)
-        print_tree(match(reset(streams[2]), :var_decl_item))
+        match(reset(streams[2]), :var_decl_item)
+    end
 
-        str = ":: output_array([1..4]) = [X_INTRODUCED_0_,X_INTRODUCED_1_,X_INTRODUCED_2_,X_INTRODUCED_3_];"
-        print_tree(match(TokenStream(str), :annotations), maxdepth=100)
+    @testset "constraint_item" begin
+        stream = TokenStream("constraint int_lin_ne(X_INTRODUCED_4_,[X_INTRODUCED_0_,X_INTRODUCED_1_],-1);")
+        match(reset(stream), :constraint_item) |> print_tree
 
-        match(TokenStream(str[3:end]), :annotation)
-
-        #=
-        expr
-          | basic_expr
-          |    | basic-literal-expr
-          |    |    | bool, int, float, set
-          |    | indentifer
-          | array_literal
-        =#
-
-        match(TokenStream("[1..4]"), :expr)
-        match(TokenStream("[1..4]"), :array_literal)
-        print_tree(match(TokenStream("1..4"), :basic_literal_expr))
-
-        match(TokenStream("[1..4]"), :basic_expr)
-
-        match(TokenStream("[1..4]"), :basic_expr)
-
-        match(TokenStream("[1..4]"), :expr)
-        match(TokenStream("[1..4]"), :array_literal)
-
-
-        for (i, s) in enumerate(streams)
-            println(i)
-        end
-
-        print_tree(match(ts, :predicate_item))
-        TokenStream("var set of int{} ::")
+        str = "X_INTRODUCED_4_,[X_INTRODUCED_0_,X_INTRODUCED_1_],-1"
+        stream = TokenStream(str)
+        match(stream, :expr) |> print_tree
+        match_token(stream, :comma)
+        match(stream, :expr) |> print_tree
+        match_token(stream, :comma)
+        match(stream, :expr) |> print_tree
     end
 end
-
-struct ParsingError2 <:Exception
-    msg::String
-    stream::TokenStream
-end
-throw(ParsingError2("bla", TokenStream("hallo 1 2 3")))

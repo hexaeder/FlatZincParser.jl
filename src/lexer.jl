@@ -11,7 +11,7 @@ const KEYWORDS = [
     "set",
     "satisfy",
     "minimize",
-    "maximize"
+    "maximize",
 ]
 
 const TYPES = ["bool", "int", "float"]
@@ -202,7 +202,7 @@ function readchar(io, ifeof=nothing)
     return read(io, Char)
 end
 
-function context(io; before=10, after=10)
+function context(io::IO; before=10, after=10)
     pos = position(io)
     skip(io, -before)
     str = ""

@@ -72,7 +72,7 @@ struct ParsingError <: Exception
     stream::TokenStream
 end
 function Base.show(io::IO, err::ParsingError)
-    print(io, "ParsinError:", err.msg, " around\n", context(err.stream))
+    print(io, "ParsingError: ", err.msg, " around\n", context(err.stream))
 end
 
 
@@ -124,10 +124,13 @@ end
 
 function match_token(stream::TokenStream, type::Symbol, lexme=nothing; needsmatch=true)
     t = peek(stream)
-    if type === t.type && (lexme === nothing  || string(lexme) == t.lexme)
+
+    if t!==nothing && type === t.type && (lexme === nothing  || string(lexme) == t.lexme)
         return next(stream)
     else
-        needsmatch && throw(ParsingError("Wrong token $(t.type):$(t.lexme), requested $(type):$(lexme)", stream))
+        if needsmatch
+            throw(ParsingError("Wrong token! got '$t' but requested '$(Token(type, lexme))'", stream))
+        end
         return nothing
     end
 end
@@ -160,6 +163,7 @@ function construct(n::Node{:model}, stream)
     match_many!(n.children, stream, :predicate_item)
     match_many!(n.children, stream, :par_decl_item)
     match_many!(n.children, stream, :var_decl_item)
+    match_many!(n.children, stream, :constraint_item)
 end
 
 function construct(n::Node{:predicate_item}, stream)
@@ -433,4 +437,14 @@ function construct(n::Node{:basic_expr}, stream)
         return
     end
     throw(ParsingError("Could not construct :basic_expr", stream))
+end
+
+function construct(n::Node{:constraint_item}, stream)
+    match_token(stream, :keyword, "constraint")
+    match!(n.children, stream, :identifier)
+    match_token(stream, :parentheses_l)
+    match_many!(n.children, stream, :expr, delimiter=:comma)
+    match_token(stream, :parentheses_r)
+    match!(n.children, stream, :annotations, needsmatch=false) #technically nm=true
+    match_token(stream, :semicolon)
 end
