@@ -71,8 +71,8 @@ using FlatZinc: match!, match_many!, match_token, match_many
     @testset "tokenize files" begin
         small_file = joinpath(@__DIR__,"files", "queens3_4.fzn")
         big_file = joinpath(@__DIR__,"files", "2018_test-scheduling_t100m10r3-2.fzn")
-        huge_file = joinpath(@__DIR__,"files", "oocsp_racks_030_f7.fzn")
-        for file in [small_file, big_file, huge_file]
+        # huge_file = joinpath(@__DIR__,"files", "oocsp_racks_030_f7.fzn")
+        for file in [small_file, big_file]
             @time tokens = open(tokenize, file)
             i, b, f = 0, 0, 0
             for t in tokens
