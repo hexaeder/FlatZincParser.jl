@@ -85,7 +85,7 @@ function Base.iterate(l::Lexer, state)
 
     # string literal
     if c == '\"'
-        if peek2(io) == peek3(io) == '\"'
+        if peek1(io) == peek2(io) == '\"'
             readchar(io); readchar(io);
             read_while!(_cache, io, '\"'; condition=innone)
             if peek1(io) == peek2(io) == peek3(io) == '\"'
