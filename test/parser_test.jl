@@ -112,11 +112,30 @@ using FlatZincParser: match!, match_many!, match_token, match_many
         println("Parse big file")
         @time match(TokenStream(tokens), :model);
 
-        @time parsefile(small_file; async=true);
-        @time parsefile(small_file; async=false);
+        @info "small file asyn=true"
+        @time m1 = parsefile(small_file; async=true);
+        @info "small file asyn=false"
+        @time m2 = parsefile(small_file; async=false);
+        @test m1 == m2
 
-        @time parsefile(big_file; async=true, spawn=true);
-        @time parsefile(big_file; async=true, spawn=false);
-        @time parsefile(big_file; async=false);
+        @info "big file asyn=true, spawn=true"
+        @time m1 = parsefile(big_file; async=true, spawn=true);
+        @info "big file asyn=true, spawn=false"
+        @time m2 = parsefile(big_file; async=true, spawn=false);
+        @info "big file asyn=false"
+        @time m3 = parsefile(big_file; async=false);
+        @test m1 == m2 == m3
+
+        @info "small file parallel=true"
+        @time m1 = parsefile(small_file, parallel=true);
+        @info "small file parallel=false"
+        @time m2 = parsefile(small_file, parallel=false);
+        @test m1 == m2
+
+        @info "big file parallel=true"
+        @time m1 = parsefile(big_file, parallel=true);
+        @info "big file parallel=false"
+        @time m2 = parsefile(big_file, parallel=false);
+        @test m1 == m2
     end
 end

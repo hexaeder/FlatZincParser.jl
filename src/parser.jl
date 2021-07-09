@@ -134,6 +134,21 @@ function construct(n::Node{:model}, stream)
     match!(n.children, stream, :solve_item)
 end
 
+function construct(n::Node{:fullline}, stream)
+    if match!(n.children, stream, :constraint_item, needsmatch=false) !== nothing
+        return
+    elseif match!(n.children, stream, :predicate_item, needsmatch=false) !== nothing
+        return
+    elseif match!(n.children, stream, :par_decl_item, needsmatch=false) !== nothing
+        return
+    elseif match!(n.children, stream, :var_decl_item, needsmatch=false) !== nothing
+        return
+    elseif match!(n.children, stream, :solve_item) !== nothing
+        return
+    end
+    throw(ParsingError("Could not construct :fullline", stream))
+end
+
 function construct(n::Node{:predicate_item}, stream)
     match_token(stream, :keyword, "predicate")
     match!(n.children, stream, :identifier)
