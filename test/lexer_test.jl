@@ -1,20 +1,20 @@
 using Test
 using AbstractTrees
 
-using FlatZinc
-using FlatZinc: TokenStream, AbstractNode, DataNode, Node, next, reset, context
-using FlatZinc: match!, match_many!, match_token, match_many
+using FlatZincParser
+using FlatZincParser: TokenStream, AbstractNode, DataNode, Node, next, reset, context
+using FlatZincParser: match!, match_many!, match_token, match_many
 
 @testset "lexer" begin
     @testset "inany" begin
-        using FlatZinc: inany
+        using FlatZincParser: inany
         @test !inany('a', 'b':'d', 'A':'Z')
         @test inany('a', 'a':'d', 'A':'Z')
         @test inany('B', 'a':'d', 'A':'Z')
     end
 
     @testset "read while" begin
-        using FlatZinc: read_while, innone
+        using FlatZincParser: read_while, innone
         iob = IOBuffer("123abc#12")
         @test read_while(iob, ('1':'3', 'a':'z')) == "123abc"
         @test read(iob, Char) == '#'
@@ -32,7 +32,7 @@ using FlatZinc: match!, match_many!, match_token, match_many
     end
 
     @testset "peek2" begin
-        using FlatZinc: peekn
+        using FlatZincParser: peekn
         io = IOBuffer("12345")
         pos = position(io)
         @test peekn(1, io) == '1'

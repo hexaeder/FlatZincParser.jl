@@ -1,4 +1,4 @@
-name = "FlatZinc"
+name = "FlatZincParser"
 uuid = "51d0216f-4a04-4f58-83ee-a6b62c27d29d"
 authors = ["Hans Würfel <git@wuerfel.io> and contributors"]
 version = "0.1.0"

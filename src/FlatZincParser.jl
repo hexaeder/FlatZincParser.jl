@@ -1,4 +1,4 @@
-module FlatZinc
+module FlatZincParser
 
 export parsefile
 
