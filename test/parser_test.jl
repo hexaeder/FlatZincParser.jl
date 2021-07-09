@@ -102,10 +102,14 @@ using FlatZinc: match!, match_many!, match_token, match_many
         big_file = joinpath(@__DIR__,"files", "2018_test-scheduling_t100m10r3-2.fzn")
         # huge_file = joinpath(@__DIR__,"files", "oocsp_racks_030_f7.fzn")
 
+        println("Tokenize small file")
         @time tokens = open(tokenize, small_file);
+        println("Parse small file")
         @time match(TokenStream(tokens), :model);
 
+        println("Tokenize big file")
         @time tokens = open(tokenize, big_file);
+        println("Parse big file")
         @time match(TokenStream(tokens), :model);
     end
 end

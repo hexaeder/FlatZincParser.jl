@@ -16,15 +16,15 @@ using FlatZinc: match!, match_many!, match_token, match_many
     @testset "read while" begin
         using FlatZinc: read_while, innone
         iob = IOBuffer("123abc#12")
-        @test read_while(iob, '1':'3', 'a':'z') == "123abc"
+        @test read_while(iob, ('1':'3', 'a':'z')) == "123abc"
         @test read(iob, Char) == '#'
 
         iob = IOBuffer("123abc#12")
         @test read_while(iob, 'a':'z') == ""
-        @test read_while(iob, '1':'3', 'a':'z', '#') == "123abc#12"
+        @test read_while(iob, ('1':'3', 'a':'z', '#')) == "123abc#12"
         @test eof(iob)
         iob = IOBuffer("123abc#12!")
-        @test read_while(iob, '1':'3', 'a':'z', '#') == "123abc#12"
+        @test read_while(iob, ('1':'3', 'a':'z', '#')) == "123abc#12"
 
         iob = IOBuffer("123a\"bc#12")
         @test read_while(iob, '"'; condition=innone) == "123a"
@@ -93,38 +93,11 @@ using FlatZinc: match!, match_many!, match_token, match_many
         end
     end
 
-    #=
-    string = open(big_file) do io
-    read(io, String)
-    end;
-    @benchmark tokenize($string)
-
-    @benchmark begin
-    FlatZinc.read_while!(_target, io, '1':'9')
-    end setup = begin
-    _target = IOBuffer()
-    io = IOBuffer("123asdb")
-    end
-
-    @benchmark begin
-    FlatZinc.read_while!(_target, io, 'a':'z', '1':'9')
-    end setup = begin
-    _target = IOBuffer()
-    io = IOBuffer("123asdb")
-    end
-
-    @benchmark begin
-    FlatZinc.read_single!(_target, io, '1':'9')
-    end setup = begin
-    _target = IOBuffer()
-    io = IOBuffer("123asdb")
-    end
-
-    @benchmark begin
-    FlatZinc.read_single!(_target, io, '1':'9', 'a':'z')
-    end setup = begin
-    _target = IOBuffer()
-    io = IOBuffer("123asdb")
-    end
-    =#
+    # using BenchmarkTools
+    # big_file = joinpath(@__DIR__,"files", "2018_test-scheduling_t100m10r3-2.fzn")
+    # string = open(big_file) do io
+    #     read(io, String)
+    # end;
+    # @btime tokenize($string)
+    # 23.758 ms (239903 allocations: 17.54 MiB)
 end

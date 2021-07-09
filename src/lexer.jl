@@ -106,9 +106,11 @@ function Base.iterate(l::Lexer, state)
     end
 
     # check for word
-    if inany(c, 'a':'z', 'A':'Z', '_') # XXX: i allow _ as begin for all identifiers
+    # the '_':'_' seems awkward but makes the types homogenious and faster
+    # XXX: i allow _ as begin for all identifiers
+    if inany(c, 'a':'z', 'A':'Z', '_':'_')
         write(_cache, c)
-        read_while!(_cache, io, 'a':'z', 'A':'Z', '0':'9', '_')
+        read_while!(_cache, io, ('a':'z', 'A':'Z', '0':'9', '_':'_'))
         word = String(take!(_cache))
         if word ∈ KEYWORDS
             return (Token(:keyword, word, ln), state)
@@ -132,7 +134,7 @@ function Base.iterate(l::Lexer, state)
     if inany(c, '0':'9')
         if c=='0' && peek1(io) ∈ 'x' # hex literal
             write(_cache, readchar(io)) # write the peeked x
-            read_while!(_cache, io, '0':'9', 'a':'f', 'A':'F'; needsmatch=true)
+            read_while!(_cache, io, ('0':'9', 'a':'f', 'A':'F'); needsmatch=true)
             word = String(take!(_cache))
             return (Token(:int_literal, word, ln), state)
         elseif c=='0' && peek1(io) ∈ 'o' #?? literal
@@ -143,7 +145,7 @@ function Base.iterate(l::Lexer, state)
             return (Token(:int_literal, word, ln), state)
         else
             read_while!(_cache, io, '0':'9') # read rest of number
-            if peek1(io) ∈ ('.', 'e', 'E') && inany(peek2(io), '0':'9', '+', '-')# ouuhh it's a float
+            if peek1(io) ∈ ('.', 'e', 'E') && inany(peek2(io), '0':'9', '+':'+', '-':'-')# ouuhh it's a float
                 read_single!(_cache, io, '.')
                 read_while!(_cache, io, '0':'9')
                 found_e = read_single!(_cache, io, ('e','E'))
@@ -163,11 +165,10 @@ function Base.iterate(l::Lexer, state)
     error("No token found: ", context(io))
 end
 
-function read_while!(_target, io, collections...; needsmatch=false, condition=inany)
+function read_while!(_target, io, collections; needsmatch=false, condition=inany)
     i = 0
     c = readchar(io)
-    # XXX: the sluped collections lead to allocations for more than one match
-    while condition(c, collections...)
+    while condition(c, collections)
         write(_target, c)
         i += 1
         c = readchar(io)
@@ -179,14 +180,15 @@ function read_while!(_target, io, collections...; needsmatch=false, condition=in
 end
 
 function read_while(args...; kwargs...)
+    # probably slow due to slurping, but okay for debugging/testing
     _target = IOBuffer()
     read_while!(_target, args...; kwargs...)
     return String(take!(_target))
 end
 
-function read_single!(_target, io, collections...; needsmatch=false)
+function read_single!(_target, io, collections; needsmatch=false, condition=inany)
     c = readchar(io)
-    if inany(c, collections...)
+    if condition(c, collections)
         write(_target, c)
         return true
     else
@@ -197,19 +199,22 @@ function read_single!(_target, io, collections...; needsmatch=false)
 end
 
 function read_single(args...; kwargs...)
+    # probably slow due to slurping, but okay for debugging/testing
     _target = IOBuffer(sizehint=1)
     read_while!(_target, args...; kwargs...)
     return String(take!(_target))
 end
 
-function inany(e, collections...)
+inany(e, collections...) = inany(e, collections)
+function inany(e, collections::Tuple)
     for c in collections
         e ∈ c && return true
     end
     return false
 end
 
-function innone(e, collections...)
+innone(e, collections...) = innone(e, collections)
+function innone(e, collections::Tuple)
     for c in collections
         e ∉ c && return true
     end
