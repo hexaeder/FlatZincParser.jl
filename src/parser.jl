@@ -14,6 +14,8 @@ struct DataNode{D} <: AbstractNode
     data::D
 end
 
+Base.:(==)(n1::T, n2::T) where {T<:DataNode} = n1.data == n2.data
+
 AbstractTrees.printnode(io::IO, node::DataNode) = print(io, node.data)
 
 
@@ -27,6 +29,8 @@ mutable struct Node{T} <: AbstractNode
     children::Vector{AbstractNode}
     Node(type) = new{type}(AbstractNode[])
 end
+
+Base.:(==)(n1::T, n2::T) where {T<:Node} = n1.children == n2.children
 
 type(::Node{T}) where {T} = T
 
