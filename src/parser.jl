@@ -40,14 +40,14 @@ end
 
 function match!(children, stream::TokenStream, type::Symbol; needsmatch=true)
     candidate = Node(type)
-    idx = stream.idx
+    pos = position(stream)
     try
         construct(candidate, stream)
         push!(children, candidate)
         return candidate
     catch err
         if err isa ParsingError && !needsmatch
-            stream.idx = idx # reset stream position
+            setposition!(stream, pos) # reset! stream position
         else
             rethrow()
         end
@@ -83,10 +83,10 @@ function match_token(stream::TokenStream, type::Symbol, lexme=nothing; needsmatc
     t = peek(stream)
 
     if t!==nothing && type === t.type && (lexme === nothing  || string(lexme) == t.lexme)
-        return next(stream)
+        return next!(stream)
     else
         if needsmatch
-            throw(ParsingError("Wrong token! got '$t' but requested '$(Token(type, lexme))'", stream, stream.idx+1))
+            throw(ParsingError("Wrong token! got '$t' but requested '$(Token(type, lexme))'", stream))
         end
         return nothing
     end

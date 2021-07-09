@@ -2,7 +2,7 @@ using Test
 using AbstractTrees
 
 using FlatZincParser
-using FlatZincParser: TokenStream, AbstractNode, DataNode, Node, next, reset, context
+using FlatZincParser: TokenStream, AbstractNode, DataNode, Node, next!, reset!, context, peek
 using FlatZincParser: match!, match_many!, match_token, match_many
 
 @testset "parser testes" begin
@@ -53,8 +53,8 @@ using FlatZincParser: match!, match_many!, match_token, match_many
             TokenStream("array [1..100] of int: duration = [88,740,752,503,536,537,300,668,332,693,30,249,673,391,51,386,328,313,103,190,741,800,425,552,749,31,632,690,530,706,131,377,505,656,654,720,757,90,331,450,103,276,571,782,568,772,106,198,183,800,705,140,107,542,597,97,580,59,325,336,76,482,776,428,237,433,701,220,478,102,32,617,454,360,541,107,609,730,107,274,589,305,249,96,365,651,163,202,560,571,104,740,720,437,230,157,145,318,531,481];"),
             TokenStream("array [1..2] of int: X_INTRODUCED_1952_ = [1,-1];"),
         ]
-        match(reset(streams[1]), :par_decl_item)
-        match(reset(streams[2]), :par_decl_item)
+        match(reset!(streams[1]), :par_decl_item)
+        match(reset!(streams[2]), :par_decl_item)
     end
 
     @testset "array literal" begin
@@ -70,13 +70,13 @@ using FlatZincParser: match!, match_many!, match_token, match_many
             TokenStream("var 1..4: X_INTRODUCED_0_;"),
             TokenStream("array [1..4] of var int: queens:: output_array([1..4]) = [X_INTRODUCED_0_,X_INTRODUCED_1_,X_INTRODUCED_2_,X_INTRODUCED_3_];"),
         ]
-        match(reset(streams[1]), :var_decl_item)
-        match(reset(streams[2]), :var_decl_item)
+        match(reset!(streams[1]), :var_decl_item)
+        match(reset!(streams[2]), :var_decl_item)
     end
 
     @testset "constraint_item" begin
         stream = TokenStream("constraint int_lin_ne(X_INTRODUCED_4_,[X_INTRODUCED_0_,X_INTRODUCED_1_],-1);")
-        match(reset(stream), :constraint_item) |> print_tree
+        match(reset!(stream), :constraint_item) |> print_tree
 
         str = "X_INTRODUCED_4_,[X_INTRODUCED_0_,X_INTRODUCED_1_],-1"
         stream = TokenStream(str)
@@ -92,9 +92,9 @@ using FlatZincParser: match!, match_many!, match_token, match_many
                    TokenStream("solve :: int_search(queens,first_fail,indomain_min,complete) satisfy;"),
                    TokenStream("solve :: int_search(X_INTRODUCED_51094_,input_order,indomain_min,complete) satisfy;")]
 
-        match(reset(streams[1]), :solve_item)
-        match(reset(streams[2]), :solve_item)
-        match(reset(streams[3]), :solve_item)
+        match(reset!(streams[1]), :solve_item)
+        match(reset!(streams[2]), :solve_item)
+        match(reset!(streams[3]), :solve_item)
     end
 
     @testset "parse files" begin
@@ -111,5 +111,12 @@ using FlatZincParser: match!, match_many!, match_token, match_many
         @time tokens = open(tokenize, big_file);
         println("Parse big file")
         @time match(TokenStream(tokens), :model);
+
+        @time parsefile(small_file; async=true);
+        @time parsefile(small_file; async=false);
+
+        @time parsefile(big_file; async=true, spawn=true);
+        @time parsefile(big_file; async=true, spawn=false);
+        @time parsefile(big_file; async=false);
     end
 end
