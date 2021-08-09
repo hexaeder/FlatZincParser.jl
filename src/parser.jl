@@ -369,7 +369,7 @@ end
 function construct(n::Node{:array_literal}, stream)
     # needs to start with [
     match_token(stream, :bracket_l)
-    match_many!(n.children, stream, :basic_expr, delimiter=:comma)
+    match_many!(n.children, stream, :basic_expr, needsmatch=false, delimiter=:comma)
     match_token(stream, :bracket_r)
 end
 
