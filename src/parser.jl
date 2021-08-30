@@ -216,6 +216,14 @@ function construct(n::Node{:basic_pred_param_type}, stream)
     # jump over "set of" if given
     if match_token(stream, :keyword, "set", needsmatch=false) !== nothing
         match_token(stream, :keyword, "of")
+        # but catch "set of int" type that lexer does not support (currently)
+        # XXX: more elegant solution would be to catch that in lexer,
+        # but with the spaces this is somewhat tricky
+        if match_token(stream, :basic_par_type, "int", needsmatch=false) !== nothing
+            d = DataNode("set of int")
+            push!(n.children, d)
+            return
+        end
     end
 
     if match!(n.children, stream, :set_literal, needsmatch=false) !== nothing
@@ -369,7 +377,7 @@ end
 function construct(n::Node{:array_literal}, stream)
     # needs to start with [
     match_token(stream, :bracket_l)
-    match_many!(n.children, stream, :basic_expr, delimiter=:comma)
+    match_many!(n.children, stream, :basic_expr, needsmatch=false, delimiter=:comma)
     match_token(stream, :bracket_r)
 end
 
