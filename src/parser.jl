@@ -450,11 +450,16 @@ function construct(n::Node{:solve_item}, stream)
     match_token(stream, :keyword, "solve")
     match!(n.children, stream, :annotations, needsmatch=false) #technically nm=true
     if match_token(stream, :keyword, "satisfy", needsmatch=false) !== nothing
-        # nothing else to match
+        d = Node(:satisfy)
+        push!(n.children, d)
     elseif match_token(stream, :keyword, "minimize", needsmatch=false) !== nothing
         match!(n.children, stream, :basic_expr)
+        d = Node(:minimize)
+        push!(n.children, d)
     elseif match_token(stream, :keyword, "maximize", needsmatch=false) !== nothing
         match!(n.children, stream, :basic_expr)
+        d = Node(:maximize)
+        push!(n.children, d)
     else
         throw(ParsingError("Could not construct :solve_item", stream))
     end
