@@ -247,17 +247,38 @@ function construct(n::Node{:basic_var_type}, stream)
         return
     end
 
-    # jump over "set of" if given
-    if match_token(stream, :keyword, "set", needsmatch=false) !== nothing
-        match_token(stream, :keyword, "of")
+    # int or float range without "set of"
+    if match!(n.children, stream, :range, needsmatch=false) !== nothing
+        return
     end
 
-    if match!(n.children, stream, :set_literal, needsmatch=false) !== nothing
-        # XXX: this will also match {Float, FLoat} which is not in the grammar
+    if match_token(stream, :brace_l, needsmatch=false) !== nothing
+        match_many!(n.children, stream, :int_literal, delimiter=:comma)
+        match_token(stream, :brace_r)
+        return
+    end
+
+    # must be one of the "set of" options, designated with its own Symbol
+    if match!(n.children, stream, :set_of_var_basic_var_type, needsmatch=false) !== nothing
         return
     end
 
     throw(ParsingError("Could not construct :basic_par_type", stream))
+end
+
+function construct(n::Node{:set_of_var_basic_var_type}, stream)
+    match_token(stream, :keyword, "set")
+    match_token(stream, :keyword, "of")
+
+    if match_token(stream, :brace_l, needsmatch=false) !== nothing
+        match_many!(n.children, stream, :int_literal, delimiter=:comma)
+        match_token(stream, :brace_r)
+        return
+    else
+        # XXX: this will also match {Float, Float} which is not in the grammar
+        match!(n.children, stream, :range, needsmatch=true) !== nothing
+        return
+    end
 end
 
 function construct(n::Node{:set_literal}, stream)
