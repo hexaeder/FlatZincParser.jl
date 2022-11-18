@@ -396,12 +396,17 @@ function construct(n::Node{:annotation}, stream)
     end
 end
 
+function construct(n::Node{:basic_ann_expr_list}, stream)
+    match_token(stream, :bracket_l)
+    match_many!(n.children, stream, :basic_ann_expr, delimiter=:comma)
+    match_token(stream, :bracket_r)
+end
+
 function construct(n::Node{:ann_expr}, stream)
     if match!(n.children, stream, :basic_ann_expr, needsmatch=false) !== nothing
         return
-    elseif match_token(stream, :bracket_l, needsmatch=false) !== nothing
-        match_many!(n.children, stream, :basic_ann_expr, delimiter=:comma)
-        match_token(stream, :bracket_r)
+    elseif peek(stream).type == :bracket_l
+        match!(n.children, stream, :basic_ann_expr_list, needsmatch=true)
         return
     end
     throw(ParsingError("Could not construct :ann_expr", stream))
