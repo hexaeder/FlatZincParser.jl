@@ -213,21 +213,21 @@ function construct(n::Node{:basic_pred_param_type}, stream)
         return
     end
 
-    # jump over "set of" if given
-    if match_token(stream, :keyword, "set", needsmatch=false) !== nothing
-        match_token(stream, :keyword, "of")
-        # but catch "set of int" type that lexer does not support (currently)
-        # XXX: more elegant solution would be to catch that in lexer,
-        # but with the spaces this is somewhat tricky
-        if match_token(stream, :basic_par_type, "int", needsmatch=false) !== nothing
-            d = DataNode("set of int")
-            push!(n.children, d)
-            return
-        end
+    # int or float range without "set of"
+    if match!(n.children, stream, :range, needsmatch=false) !== nothing
+        return
     end
 
-    if match!(n.children, stream, :set_literal, needsmatch=false) !== nothing
-        # XXX: this will also match {Float, FLoat} which is not in the grammar
+    if match_token(stream, :brace_l, needsmatch=false) !== nothing
+        match_many!(n.children, stream, :int_literal, delimiter=:comma)
+        match_token(stream, :brace_r)
+        return
+    end
+
+    # must be one of the "set of" options, designated with its own Symbol
+    # XXX: more elegant solution would be to catch "set of .." in lexer,
+    # but with the spaces this is somewhat tricky
+    if match!(n.children, stream, :set_of_var_basic_var_type, needsmatch=false) !== nothing
         return
     end
 
