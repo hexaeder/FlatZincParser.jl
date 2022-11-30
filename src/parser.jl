@@ -235,9 +235,21 @@ function construct(n::Node{:basic_pred_param_type}, stream)
 end
 
 function construct(n::Node{:basic_par_type}, stream)
-    t = match_token(stream, :basic_par_type)
-    d = DataNode(t.lexme)
-    n.children = [d]
+    if match_token(stream, :keyword, "set", needsmatch=false) !== nothing
+        match_token(stream, :keyword, "of")
+
+        # workaround to lexer not managing "set of int" as type, as it's multi-word
+        t = match_token(stream, :basic_par_type)
+        if t.lexme != "int"
+            throw(ParsingError("Could not construct :basic_par_type", stream))
+        end
+        d = DataNode("set of int")
+        n.children = [d]
+    else
+        t = match_token(stream, :basic_par_type)
+        d = DataNode(t.lexme)
+        n.children = [d]
+    end
 end
 
 function construct(n::Node{:basic_var_type}, stream)
@@ -263,7 +275,7 @@ function construct(n::Node{:basic_var_type}, stream)
         return
     end
 
-    throw(ParsingError("Could not construct :basic_par_type", stream))
+    throw(ParsingError("Could not construct :basic_var_type", stream))
 end
 
 function construct(n::Node{:set_of_var_basic_var_type}, stream)
