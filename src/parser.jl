@@ -381,7 +381,7 @@ function construct(n::Node{:var_decl_item}, stream)
         # well the type annotions is required but might be empty
         match!(n.children, stream, :annotations, needsmatch=false)
         if match_token(stream, :equalsign, needsmatch=false) !== nothing
-            match!(n.children, stream, :par_expr)
+            match!(n.children, stream, :basic_expr)
         end
         match_token(stream, :semicolon)
         return
