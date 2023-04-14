@@ -69,9 +69,11 @@ using FlatZincParser: match!, match_many!, match_token, match_many
         streams = [
             TokenStream("var 1..4: X_INTRODUCED_0_;"),
             TokenStream("array [1..4] of var int: queens:: output_array([1..4]) = [X_INTRODUCED_0_,X_INTRODUCED_1_,X_INTRODUCED_2_,X_INTRODUCED_3_];"),
+            TokenStream("var 6..17: X_INTRODUCED_5_ ::var_is_introduced :: is_defined_var = X_INTRODUCED_371_;"),
         ]
-        match(reset!(streams[1]), :var_decl_item)
-        match(reset!(streams[2]), :var_decl_item)
+        for stream in streams
+            match(reset!(stream), :var_decl_item)
+        end
     end
 
     @testset "constraint_item" begin

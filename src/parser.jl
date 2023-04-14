@@ -213,21 +213,21 @@ function construct(n::Node{:basic_pred_param_type}, stream)
         return
     end
 
-    # jump over "set of" if given
-    if match_token(stream, :keyword, "set", needsmatch=false) !== nothing
-        match_token(stream, :keyword, "of")
-        # but catch "set of int" type that lexer does not support (currently)
-        # XXX: more elegant solution would be to catch that in lexer,
-        # but with the spaces this is somewhat tricky
-        if match_token(stream, :basic_par_type, "int", needsmatch=false) !== nothing
-            d = DataNode("set of int")
-            push!(n.children, d)
-            return
-        end
+    # int or float range without "set of"
+    if match!(n.children, stream, :range, needsmatch=false) !== nothing
+        return
     end
 
-    if match!(n.children, stream, :set_literal, needsmatch=false) !== nothing
-        # XXX: this will also match {Float, FLoat} which is not in the grammar
+    if match_token(stream, :brace_l, needsmatch=false) !== nothing
+        match_many!(n.children, stream, :int_literal, delimiter=:comma)
+        match_token(stream, :brace_r)
+        return
+    end
+
+    # must be one of the "set of" options, designated with its own Symbol
+    # XXX: more elegant solution would be to catch "set of .." in lexer,
+    # but with the spaces this is somewhat tricky
+    if match!(n.children, stream, :set_of_var_basic_var_type, needsmatch=false) !== nothing
         return
     end
 
@@ -235,9 +235,21 @@ function construct(n::Node{:basic_pred_param_type}, stream)
 end
 
 function construct(n::Node{:basic_par_type}, stream)
-    t = match_token(stream, :basic_par_type)
-    d = DataNode(t.lexme)
-    n.children = [d]
+    if match_token(stream, :keyword, "set", needsmatch=false) !== nothing
+        match_token(stream, :keyword, "of")
+
+        # workaround to lexer not managing "set of int" as type, as it's multi-word
+        t = match_token(stream, :basic_par_type)
+        if t.lexme != "int"
+            throw(ParsingError("Could not construct :basic_par_type", stream))
+        end
+        d = DataNode("set of int")
+        n.children = [d]
+    else
+        t = match_token(stream, :basic_par_type)
+        d = DataNode(t.lexme)
+        n.children = [d]
+    end
 end
 
 function construct(n::Node{:basic_var_type}, stream)
@@ -247,17 +259,38 @@ function construct(n::Node{:basic_var_type}, stream)
         return
     end
 
-    # jump over "set of" if given
-    if match_token(stream, :keyword, "set", needsmatch=false) !== nothing
-        match_token(stream, :keyword, "of")
-    end
-
-    if match!(n.children, stream, :set_literal, needsmatch=false) !== nothing
-        # XXX: this will also match {Float, FLoat} which is not in the grammar
+    # int or float range without "set of"
+    if match!(n.children, stream, :range, needsmatch=false) !== nothing
         return
     end
 
-    throw(ParsingError("Could not construct :basic_par_type", stream))
+    if match_token(stream, :brace_l, needsmatch=false) !== nothing
+        match_many!(n.children, stream, :int_literal, delimiter=:comma)
+        match_token(stream, :brace_r)
+        return
+    end
+
+    # must be one of the "set of" options, designated with its own Symbol
+    if match!(n.children, stream, :set_of_var_basic_var_type, needsmatch=false) !== nothing
+        return
+    end
+
+    throw(ParsingError("Could not construct :basic_var_type", stream))
+end
+
+function construct(n::Node{:set_of_var_basic_var_type}, stream)
+    match_token(stream, :keyword, "set")
+    match_token(stream, :keyword, "of")
+
+    if match_token(stream, :brace_l, needsmatch=false) !== nothing
+        match_many!(n.children, stream, :int_literal, delimiter=:comma)
+        match_token(stream, :brace_r)
+        return
+    else
+        # XXX: this will also match {Float, Float} which is not in the grammar
+        match!(n.children, stream, :range, needsmatch=true) !== nothing
+        return
+    end
 end
 
 function construct(n::Node{:set_literal}, stream)
@@ -348,7 +381,7 @@ function construct(n::Node{:var_decl_item}, stream)
         # well the type annotions is required but might be empty
         match!(n.children, stream, :annotations, needsmatch=false)
         if match_token(stream, :equalsign, needsmatch=false) !== nothing
-            match!(n.children, stream, :par_expr)
+            match!(n.children, stream, :basic_expr)
         end
         match_token(stream, :semicolon)
         return
@@ -396,12 +429,17 @@ function construct(n::Node{:annotation}, stream)
     end
 end
 
+function construct(n::Node{:basic_ann_expr_list}, stream)
+    match_token(stream, :bracket_l)
+    match_many!(n.children, stream, :basic_ann_expr, delimiter=:comma)
+    match_token(stream, :bracket_r)
+end
+
 function construct(n::Node{:ann_expr}, stream)
     if match!(n.children, stream, :basic_ann_expr, needsmatch=false) !== nothing
         return
-    elseif match_token(stream, :bracket_l, needsmatch=false) !== nothing
-        match_many!(n.children, stream, :basic_ann_expr, delimiter=:comma)
-        match_token(stream, :bracket_r)
+    elseif peek(stream).type == :bracket_l
+        match!(n.children, stream, :basic_ann_expr_list, needsmatch=true)
         return
     end
     throw(ParsingError("Could not construct :ann_expr", stream))
@@ -450,11 +488,16 @@ function construct(n::Node{:solve_item}, stream)
     match_token(stream, :keyword, "solve")
     match!(n.children, stream, :annotations, needsmatch=false) #technically nm=true
     if match_token(stream, :keyword, "satisfy", needsmatch=false) !== nothing
-        # nothing else to match
+        d = Node(:satisfy)
+        push!(n.children, d)
     elseif match_token(stream, :keyword, "minimize", needsmatch=false) !== nothing
         match!(n.children, stream, :basic_expr)
+        d = Node(:minimize)
+        push!(n.children, d)
     elseif match_token(stream, :keyword, "maximize", needsmatch=false) !== nothing
         match!(n.children, stream, :basic_expr)
+        d = Node(:maximize)
+        push!(n.children, d)
     else
         throw(ParsingError("Could not construct :solve_item", stream))
     end
